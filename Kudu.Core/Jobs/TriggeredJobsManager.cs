@@ -22,12 +22,12 @@ namespace Kudu.Core.Jobs
 
         public override IEnumerable<TriggeredJob> ListJobs()
         {
-            return ListJobs(Environment.TriggeredJobsPaths);
+            return ListJobs(Environment.TriggeredJobsPath);
         }
 
         public override TriggeredJob GetJob(string jobName)
         {
-            return GetJob(jobName, Environment.TriggeredJobsPaths);
+            return GetJob(jobName, Environment.TriggeredJobsPath);
         }
 
         public async Task InvokeTriggeredJob(string jobName)

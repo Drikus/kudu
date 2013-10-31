@@ -12,18 +12,20 @@ namespace Kudu.Services.Jobs
     public class JobsController : ApiController
     {
         private readonly ITracer _tracer;
-        private readonly IJobsManager _jobsManager;
+        private readonly IJobsManager<TriggeredJob> _triggeredJobsManager;
+        private readonly IJobsManager<AlwaysOnJob> _alwaysOnJobsManager;
 
-        public JobsController(ITracer tracer, IJobsManager jobsManager)
+        public JobsController(ITracer tracer, IJobsManager<TriggeredJob> triggeredJobsManager, IJobsManager<AlwaysOnJob> alwaysOnJobsManager)
         {
             _tracer = tracer;
-            _jobsManager = jobsManager;
+            _triggeredJobsManager = triggeredJobsManager;
+            _alwaysOnJobsManager = alwaysOnJobsManager;
         }
 
         [HttpGet]
         public HttpResponseMessage GetAlwaysOnJobs()
         {
-            IEnumerable<AlwaysOnJob> alwaysOnJobs = GetJobs(_jobsManager.ListAlwaysOnJobs);
+            IEnumerable<AlwaysOnJob> alwaysOnJobs = GetJobs(_alwaysOnJobsManager.ListJobs);
 
             return Request.CreateResponse(HttpStatusCode.OK, alwaysOnJobs);
         }
@@ -31,7 +33,7 @@ namespace Kudu.Services.Jobs
         [HttpGet]
         public HttpResponseMessage GetTriggeredJobs()
         {
-            IEnumerable<TriggeredJob> triggeredJobs = GetJobs(_jobsManager.ListTriggeredJobs);
+            IEnumerable<TriggeredJob> triggeredJobs = GetJobs(_triggeredJobsManager.ListJobs);
 
             return Request.CreateResponse(HttpStatusCode.OK, triggeredJobs);
         }
@@ -39,8 +41,8 @@ namespace Kudu.Services.Jobs
         [HttpGet]
         public HttpResponseMessage GetAllJobs()
         {
-            IEnumerable<AlwaysOnJob> alwaysOnJobs = GetJobs(_jobsManager.ListAlwaysOnJobs);
-            IEnumerable<TriggeredJob> triggeredJobs = GetJobs(_jobsManager.ListTriggeredJobs);
+            IEnumerable<AlwaysOnJob> alwaysOnJobs = GetJobs(_alwaysOnJobsManager.ListJobs);
+            IEnumerable<TriggeredJob> triggeredJobs = GetJobs(_triggeredJobsManager.ListJobs);
 
             var allJobs = new AllJobs()
             {
@@ -65,7 +67,7 @@ namespace Kudu.Services.Jobs
 
         private void UpdateJobUrl(JobBase job, HttpRequestMessage request)
         {
-            job.Url = UriHelper.MakeRelative(Request.RequestUri, job.Name);
+            job.Url = UriHelper.MakeRelative(request.RequestUri, job.Name);
         }
     }
 }

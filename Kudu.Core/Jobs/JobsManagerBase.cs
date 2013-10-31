@@ -8,18 +8,21 @@ using Kudu.Core.Tracing;
 
 namespace Kudu.Core.Jobs
 {
-    public abstract class JobsManagerBase<TJob> : IJobsManager<TJob> where TJob : JobBase, new()
+    public abstract class JobsManagerBase
+    {
+        protected static readonly ScriptHostBase[] ScriptHosts = new ScriptHostBase[]
+        {
+            new WindowsScriptHost(),
+            new BashScriptHost(),
+            new PythonScriptHost(),
+            new PhpScriptHost(),
+            new NodeScriptHost()
+        };
+    }
+
+    public abstract class JobsManagerBase<TJob> : JobsManagerBase, IJobsManager<TJob> where TJob : JobBase, new()
     {
         private const string DefaultScriptFileName = "run";
-
-        private static readonly ScriptHostBase[] ScriptHosts = new ScriptHostBase[]
-            {
-                new WindowsScriptHost(),
-                new BashScriptHost(),
-                new PythonScriptHost(),
-                new PhpScriptHost(),
-                new NodeScriptHost()
-            };
 
         protected IEnvironment Environment { get; private set; }
         protected IFileSystem FileSystem { get; private set; }
@@ -35,9 +38,9 @@ namespace Kudu.Core.Jobs
         public abstract IEnumerable<TJob> ListJobs();
         public abstract TJob GetJob(string jobName);
 
-        protected TJob GetJob(string jobName, IEnumerable<string> jobsPaths)
+        protected TJob GetJob(string jobName, string jobsPath)
         {
-            IEnumerable<TJob> jobs = ListJobs(jobsPaths, jobName);
+            IEnumerable<TJob> jobs = ListJobs(jobsPath, jobName);
             int jobsCount = jobs.Count();
             if (jobsCount == 0)
             {
@@ -52,26 +55,23 @@ namespace Kudu.Core.Jobs
             return jobs.First();
         }
 
-        protected IEnumerable<TJob> ListJobs(IEnumerable<string> jobsPaths, string searchPattern = "*")
+        protected IEnumerable<TJob> ListJobs(string jobsPath, string searchPattern = "*")
         {
             var jobs = new List<TJob>();
 
-            foreach (string jobsPath in jobsPaths)
+            if (!FileSystem.Directory.Exists(jobsPath))
             {
-                if (!FileSystem.Directory.Exists(jobsPath))
-                {
-                    continue;
-                }
+                return Enumerable.Empty<TJob>();
+            }
 
-                DirectoryInfoBase jobsDirectory = FileSystem.DirectoryInfo.FromDirectoryName(jobsPath);
-                DirectoryInfoBase[] jobDirectories = jobsDirectory.GetDirectories(searchPattern, SearchOption.TopDirectoryOnly);
-                foreach (DirectoryInfoBase jobDirectory in jobDirectories)
+            DirectoryInfoBase jobsDirectory = FileSystem.DirectoryInfo.FromDirectoryName(jobsPath);
+            DirectoryInfoBase[] jobDirectories = jobsDirectory.GetDirectories(searchPattern, SearchOption.TopDirectoryOnly);
+            foreach (DirectoryInfoBase jobDirectory in jobDirectories)
+            {
+                TJob job = BuildJob(jobDirectory);
+                if (job != null)
                 {
-                    TJob job = BuildJob(jobDirectory);
-                    if (job != null)
-                    {
-                        jobs.Add(job);
-                    }
+                    jobs.Add(job);
                 }
             }
 
@@ -91,12 +91,12 @@ namespace Kudu.Core.Jobs
             }
 
             return new TJob()
-                {
-                    Name = jobName,
-                    ScriptFilePath = runCommand,
-                    BinariesPath = jobDirectory.FullName,
-                    ScriptHost = scriptHost
-                };
+            {
+                Name = jobName,
+                ScriptFilePath = runCommand,
+                BinariesPath = jobDirectory.FullName,
+                ScriptHost = scriptHost
+            };
         }
 
         private string FindCommandToRun(FileInfoBase[] files, out IScriptHost scriptHostFound)

@@ -198,7 +198,9 @@ namespace Kudu.Services.Web.App_Start
             kernel.Bind<IWebHooksManager>().To<WebHooksManager>()
                                              .InRequestScope();
 
-            kernel.Bind<IJobsManager>().To<JobsManager>()
+            kernel.Bind<IJobsManager<TriggeredJob>>().To<TriggeredJobsManager>()
+                                             .InRequestScope();
+            kernel.Bind<IJobsManager<AlwaysOnJob>>().To<AlwaysOnJobsManager>()
                                              .InRequestScope();
 
             kernel.Bind<ILogger>().ToMethod(context => GetLogger(environment, context.Kernel))

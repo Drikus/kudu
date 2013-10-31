@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using Kudu.Core.Infrastructure;
@@ -25,8 +24,8 @@ namespace Kudu.Core
         private readonly string _dataPath;
         private readonly string _alwaysOnJobsDataPath;
         private readonly string _triggeredJobsDataPath;
-        private readonly string[] _alwaysOnJobsPaths;
-        private readonly string[] _triggeredJobsPaths;
+        private readonly string _alwaysOnJobsPath;
+        private readonly string _triggeredJobsPath;
 
         // This ctor is used only in unit tests
         public Environment(
@@ -73,15 +72,8 @@ namespace Kudu.Core
             _alwaysOnJobsDataPath = alwaysOnJobsPath;
             _triggeredJobsDataPath = triggeredJobsPath;
 
-            _alwaysOnJobsPaths = new string[]
-            {
-                alwaysOnJobsPath
-            };
-
-            _triggeredJobsPaths = new string[]
-            {
-                triggeredJobsPath
-            };
+            _alwaysOnJobsPath = alwaysOnJobsPath;
+            _triggeredJobsPath = triggeredJobsPath;
 
             _logFilesPath = Path.Combine(rootPath, Constants.LogFilesPath);
             _tracePath = Path.Combine(rootPath, Constants.TracePath);
@@ -121,17 +113,9 @@ namespace Kudu.Core
             _alwaysOnJobsDataPath = Path.Combine(_dataPath, alwaysOnJobsPath);
             _triggeredJobsDataPath = Path.Combine(_dataPath, triggeredJobsPath);
 
-            _alwaysOnJobsPaths = new string[]
-            {
-                Path.Combine(_webRootPath, Constants.AppDataPath, alwaysOnJobsPath),
-                Path.Combine(SiteRootPath, alwaysOnJobsPath)
-            };
+            _alwaysOnJobsPath = Path.Combine(_webRootPath, Constants.AppDataPath, alwaysOnJobsPath);
 
-            _triggeredJobsPaths = new string[]
-            {
-                Path.Combine(_webRootPath, Constants.AppDataPath, triggeredJobsPath),
-                Path.Combine(SiteRootPath, triggeredJobsPath)
-            };
+            _triggeredJobsPath = Path.Combine(_webRootPath, Constants.AppDataPath, triggeredJobsPath);
         }
 
         public string RepositoryPath
@@ -279,14 +263,14 @@ namespace Kudu.Core
             }
         }
 
-        public IEnumerable<string> AlwaysOnJobsPaths
+        public string AlwaysOnJobsPath
         {
-            get { return _alwaysOnJobsPaths; }
+            get { return _alwaysOnJobsPath; }
         }
 
-        public IEnumerable<string> TriggeredJobsPaths
+        public string TriggeredJobsPath
         {
-            get { return _triggeredJobsPaths; }
+            get { return _triggeredJobsPath; }
         }
     }
 }

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
-using System.Linq;
 using System.Threading;
 using Kudu.Contracts.Jobs;
 using Kudu.Core.Tracing;
@@ -15,8 +14,8 @@ namespace Kudu.Core.Jobs
 
         private HashSet<string> _updatedJobs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        private readonly string _jobsPath;
         private readonly Timer _makeChangesTimer;
+        private readonly Timer _startFileWatcherTimer;
         private readonly object _lockObject = new object();
 
         private FileSystemWatcher _fileSystemWatcher;
@@ -26,23 +25,24 @@ namespace Kudu.Core.Jobs
         public AlwaysOnJobsManager(ITraceFactory traceFactory, IEnvironment environment, IFileSystem fileSystem)
             : base(traceFactory, environment, fileSystem)
         {
+            foreach (AlwaysOnJob alwaysOnJob in ListJobs())
+            {
+                UpdateJob(alwaysOnJob);
+            }
+
             _makeChangesTimer = new Timer(OnMakeChanges);
-            _jobsPath = Environment.AlwaysOnJobsPaths.First();
+            _startFileWatcherTimer = new Timer(StartWatcher);
+            _startFileWatcherTimer.Change(0, Timeout.Infinite);
         }
 
         public override IEnumerable<AlwaysOnJob> ListJobs()
         {
-            return ListJobs(Environment.TriggeredJobsPaths);
+            return ListJobs(Environment.AlwaysOnJobsPath);
         }
 
         public override AlwaysOnJob GetJob(string jobName)
         {
-            return GetJob(jobName, Environment.TriggeredJobsPaths);
-        }
-
-        public void Start()
-        {
-            StartWatcher();
+            return GetJob(jobName, Environment.AlwaysOnJobsPath);
         }
 
         private void OnMakeChanges(object state)
@@ -102,27 +102,29 @@ namespace Kudu.Core.Jobs
             _alwaysOnJobRunners.Remove(updatedJobName);
         }
 
-        private void StartWatcher()
+        private void StartWatcher(object state)
         {
-            if (_fileSystemWatcher == null)
+            if (!FileSystem.Directory.Exists(Environment.AlwaysOnJobsPath))
             {
-                var watcher = new FileSystemWatcher(_jobsPath);
-                watcher.Changed += new FileSystemEventHandler(OnChanged);
-                watcher.Deleted += new FileSystemEventHandler(OnChanged);
-                watcher.Renamed += new RenamedEventHandler(OnChanged);
-                //watcher.Error += new ErrorEventHandler(DoSafeAction<object, ErrorEventArgs>(OnError, "LogStreamManager.OnError"));
-                watcher.IncludeSubdirectories = true;
-                watcher.EnableRaisingEvents = true;
-                _fileSystemWatcher = watcher;
+                _startFileWatcherTimer.Change(30 * 1000, Timeout.Infinite);
+                return;
             }
+
+            _fileSystemWatcher = new FileSystemWatcher(Environment.AlwaysOnJobsPath);
+            _fileSystemWatcher.Changed += OnChanged;
+            _fileSystemWatcher.Deleted += OnChanged;
+            _fileSystemWatcher.Renamed += OnChanged;
+            //_fileSystemWatcher.Error += new ErrorEventHandler(DoSafeAction<object, ErrorEventArgs>(OnError, "LogStreamManager.OnError"));
+            _fileSystemWatcher.IncludeSubdirectories = true;
+            _fileSystemWatcher.EnableRaisingEvents = true;
         }
 
         private void OnChanged(object sender, FileSystemEventArgs e)
         {
             string path = e.FullPath;
-            if (path != null && path.Length > _jobsPath.Length)
+            if (path != null && path.Length > Environment.AlwaysOnJobsPath.Length)
             {
-                path = path.Substring(_jobsPath.Length);
+                path = path.Substring(Environment.AlwaysOnJobsPath.Length);
                 int firstSeparator = path.IndexOf(Path.DirectorySeparatorChar);
                 if (firstSeparator > 0)
                 {

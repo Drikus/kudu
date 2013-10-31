@@ -112,13 +112,13 @@ namespace Kudu.TestHarness
             set;
         }
 
-        public System.Collections.Generic.IEnumerable<string> AlwaysOnJobsPaths
+        public string AlwaysOnJobsPath
         {
             get;
             set;
         }
 
-        public System.Collections.Generic.IEnumerable<string> TriggeredJobsPaths
+        public string TriggeredJobsPath
         {
             get;
             set;

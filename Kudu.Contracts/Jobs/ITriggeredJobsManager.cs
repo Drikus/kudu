@@ -4,6 +4,6 @@ namespace Kudu.Contracts.Jobs
 {
     public interface ITriggeredJobsManager : IJobsManager<TriggeredJob>
     {
-        Task InvokeTriggeredJob(string jobName)
+        Task InvokeTriggeredJob(string jobName);
     }
 }
