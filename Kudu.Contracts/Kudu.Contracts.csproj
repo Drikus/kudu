@@ -57,7 +57,9 @@
     <Compile Include="Infrastructure\LockOperationException.cs" />
     <Compile Include="Infrastructure\RS.cs" />
     <Compile Include="Infrastructure\StringUtils.cs" />
+    <Compile Include="Jobs\IAlwaysOnJobsManager.cs" />
     <Compile Include="Jobs\IJobsManager.cs" />
+    <Compile Include="Jobs\ITriggeredJobsManager.cs" />
     <Compile Include="Jobs\JobBase.cs" />
     <Compile Include="Jobs\JobStatus.cs" />
     <Compile Include="Settings\ISettingsProvider.cs" />

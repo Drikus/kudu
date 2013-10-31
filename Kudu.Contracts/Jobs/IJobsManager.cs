@@ -2,9 +2,9 @@
 
 namespace Kudu.Contracts.Jobs
 {
-    public interface IJobsManager
+    public interface IJobsManager<TJob> where TJob : JobBase, new()
     {
-        IEnumerable<AlwaysOnJob> ListAlwaysOnJobs();
-        IEnumerable<TriggeredJob> ListTriggeredJobs();
+        IEnumerable<TJob> ListJobs();
+        TJob GetJob(string jobName);
     }
 }
