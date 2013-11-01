@@ -243,7 +243,7 @@
 			return false;
 		});
 
-        extern.mes
+	    extern.ringn = ringn;
 
 		////////////////////////////////////////////////////////////////////////
 		// Handle losing focus

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -11,16 +12,37 @@ using Microsoft.AspNet.SignalR;
 
 namespace Kudu.Services
 {
-    public class PersistentCommandController : PersistentConnection
+    public class PersistentCommandController : PersistentConnection, IDisposable
     {
         private readonly ITracer _tracer;
         private readonly IEnvironment _environment;
         static readonly IDictionary<string, Process> Processes = new Dictionary<string, Process>();
+        private readonly object _syncLock = new object();
+        private readonly BlockingCollection<Action> _actionsCollection = new BlockingCollection<Action>();
+        private readonly CancellationTokenSource _cancellationToken = new CancellationTokenSource();
+
 
         public PersistentCommandController(IEnvironment environment, ITracer tracer)
         {
             _environment = environment;
             _tracer = tracer;
+            
+            var syncThread = new Thread(() =>
+            {
+                while (true)
+                {
+                    try
+                    {
+                        var action = _actionsCollection.Take(_cancellationToken.Token);
+                        action();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return;
+                    }
+                }
+            });
+            syncThread.Start();
         }
 
         protected override Task OnConnected(IRequest request, string connectionId)
@@ -89,39 +111,78 @@ namespace Kudu.Services
             };
 
             var process = Process.Start(startInfo);
-            var outputReader = TextReader.Synchronized(process.StandardOutput);
-            process.ErrorDataReceived += (sender, evt) => Connection.Send(connectionId, new { Error = evt.Data });
-            process.Exited += (sender, evt) =>
-            {
-                lock (Processes)
-                {
-                    Processes.Remove(connectionId);
-                }
-                Connection.Send(connectionId, new { Output = "Exited: " + process.ExitCode });
-            };
-            var outputThread = new Thread(() =>
-            {
-                while (!process.HasExited)
-                {
-                    int count;
-                    var buffer = new char[1024];
-                    while ((count = outputReader.Read(buffer, 0, 1024)) > 0)
-                    {
-                        var builder = new StringBuilder();
-                        builder.Append(buffer, 0, count);
-                        string s = builder.ToString();
-                        Connection.Send(connectionId, new { Output = s.Replace("\r\n", "\n")});
-                        buffer = new char[1024];
-                    }
-                    Thread.Sleep(200);
-                }
-            });
-            outputThread.Start();
             process.EnableRaisingEvents = true;
-            process.BeginErrorReadLine();
+
+            var outputReader = TextReader.Synchronized(process.StandardOutput);
+            var outputThread = new Thread(() => ListenAndSendStream(process, outputReader, connectionId, false));
+            outputThread.Start();
+
+            var errorReader = TextReader.Synchronized(process.StandardError);
+            var errorThread = new Thread(() => ListenAndSendStream(process, errorReader, connectionId, true));
+            errorThread.Start();
+            
             return process;
         }
 
+        private void ListenAndSendStream(Process process, TextReader textReader, string connectionId, bool isError)
+        {
+            const int bufferSize = 4096;
+            while (!process.HasExited)
+            {
+                int count;
+                var buffer = new char[bufferSize];
+                while ((count = textReader.Read(buffer, 0, bufferSize)) > 0)
+                {
+                    var builder = new StringBuilder();
+                    builder.Append(buffer, 0, count);
+                    var output = builder.ToString().Replace("\r\n", "\n");
+                    if (!String.IsNullOrEmpty(output))
+                        if (isError)
+                        lock(Connection)
+                        {
+                            Connection.Send(connectionId, new {Error = output});
+                            //_actionsCollection.Add(() =>
+                            Task.Run(() =>
+                            {
+                                lock (_syncLock)
+                                {
+                                    Thread.Sleep(TimeSpan.FromMilliseconds(100));
+                                }
+                            });
+                        }
+                        else
+                        lock(Connection)
+                        {
+                            lock (_syncLock)
+                            {
+                                Connection.Send(connectionId, new {Output = output});
+                            }
+                        }
+                }
+            }
+        }
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool cleanupNative)
+        {
+            _cancellationToken.Cancel();
+            _cancellationToken.Dispose();
+            _actionsCollection.Dispose();
+            foreach (var process in Processes)
+            {
+                try
+                {
+                    process.Value.Kill();
+                }
+                catch
+                {
+                }
+            }
+        }
     }
 }
