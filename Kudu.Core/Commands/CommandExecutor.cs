@@ -19,8 +19,7 @@ namespace Kudu.Core.Commands
         private readonly IDeploymentSettingsManager _settings;
         private readonly ITracer _tracer;
 
-        public CommandExecutor(string repositoryPath, IEnvironment environment, IDeploymentSettingsManager settings,
-            ITracer tracer)
+        public CommandExecutor(string repositoryPath, IEnvironment environment, IDeploymentSettingsManager settings, ITracer tracer)
         {
             _rootDirectory = repositoryPath;
             _environment = environment;
@@ -92,8 +91,7 @@ namespace Kudu.Core.Commands
                 workingDirectory = Path.Combine(_rootDirectory, relativeWorkingDirectory);
             }
 
-            Executable exe = _externalCommandFactory.BuildExternalCommandExecutable(workingDirectory,
-                _environment.WebRootPath, NullLogger.Instance);
+            Executable exe = _externalCommandFactory.BuildExternalCommandExecutable(workingDirectory, _environment.WebRootPath, NullLogger.Instance);
             _executingProcess = exe.CreateProcess(command);
 
             var commandEvent = CommandEvent;
