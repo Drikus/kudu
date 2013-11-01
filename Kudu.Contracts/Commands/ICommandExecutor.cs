@@ -1,15 +1,14 @@
 ﻿using System;
-using System.Threading.Tasks;
 
 namespace Kudu.Core.Commands
 {
     public interface ICommandExecutor
     {
-        bool Executing { get; }
-        CommandResult ExecuteCommand(string command, string workingDirectory, bool calculateWorkingDir = false);
-        Task<CommandResult> ExecuteCommandAsync(string command, string workingDirectory, bool calculateWorkingDir = false);
-        Task SendInput(string input);
+        CommandResult ExecuteCommand(string command, string workingDirectory);
+
+        void ExecuteCommandAsync(string command, string workingDirectory);
         void CancelCommand();
+
         event Action<CommandEvent> CommandEvent;
     }
 }

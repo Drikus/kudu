@@ -1,19 +1,17 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Text;
-using System.Threading.Tasks;
-using Kudu.Contracts.Settings;
-using Kudu.Contracts.Tracing;
+﻿using Kudu.Contracts.Settings;
 using Kudu.Core.Deployment;
 using Kudu.Core.Deployment.Generator;
 using Kudu.Core.Infrastructure;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using Kudu.Contracts.Tracing;
 
 namespace Kudu.Core.Commands
 {
     public class CommandExecutor : ICommandExecutor
     {
-        private const string CurrentDirIdentifier = "$$CD$$";
         private Process _executingProcess;
         private IEnvironment _environment;
         private string _rootDirectory;
@@ -21,7 +19,8 @@ namespace Kudu.Core.Commands
         private readonly IDeploymentSettingsManager _settings;
         private readonly ITracer _tracer;
 
-        public CommandExecutor(string repositoryPath, IEnvironment environment, IDeploymentSettingsManager settings, ITracer tracer)
+        public CommandExecutor(string repositoryPath, IEnvironment environment, IDeploymentSettingsManager settings,
+            ITracer tracer)
         {
             _rootDirectory = repositoryPath;
             _environment = environment;
@@ -30,17 +29,9 @@ namespace Kudu.Core.Commands
             _tracer = tracer;
         }
 
-        public bool Executing
-        {
-            get
-            {
-                return _executingProcess != null && !_executingProcess.HasExited;
-            }
-        }
-
         public event Action<CommandEvent> CommandEvent;
 
-        public CommandResult ExecuteCommand(string command, string workingDirectory, bool calculateWorkingDir = false)
+        public CommandResult ExecuteCommand(string command, string workingDirectory)
         {
             var idleManager = new IdleManager(_settings.GetCommandIdleTimeout(), _tracer);
             var result = new CommandResult();
@@ -63,9 +54,6 @@ namespace Kudu.Core.Commands
                     case CommandEventType.Complete:
                         exitCode = args.ExitCode;
                         break;
-                    case CommandEventType.CurrentDirectory:
-                        result.CurrentDirectory = args.Data;
-                        break;
                     default:
                         break;
                 }
@@ -76,7 +64,7 @@ namespace Kudu.Core.Commands
                 // Code reuse is good
                 CommandEvent += handler;
 
-                ExecuteCommandAsync(command, workingDirectory, calculateWorkingDir).Wait();
+                ExecuteCommandAsync(command, workingDirectory);
             }
             finally
             {
@@ -92,10 +80,8 @@ namespace Kudu.Core.Commands
             return result;
         }
 
-        public async Task<CommandResult> ExecuteCommandAsync(string command, string relativeWorkingDirectory, bool calculateWorkingDir)
+        public void ExecuteCommandAsync(string command, string relativeWorkingDirectory)
         {
-            var exitCodeTask = new TaskCompletionSource<int>();
-            var workingDirTask = new TaskCompletionSource<string>();
             string workingDirectory;
             if (String.IsNullOrEmpty(relativeWorkingDirectory))
             {
@@ -106,18 +92,12 @@ namespace Kudu.Core.Commands
                 workingDirectory = Path.Combine(_rootDirectory, relativeWorkingDirectory);
             }
 
-            Executable exe = _externalCommandFactory.BuildExternalCommandExecutable(workingDirectory, _environment.WebRootPath, NullLogger.Instance);
-            if (calculateWorkingDir)
-            {
-                command = command + " & echo " + CurrentDirIdentifier + "& CD";
-            }
-            else
-            {
-                workingDirTask.TrySetResult(null);
-            }
+            Executable exe = _externalCommandFactory.BuildExternalCommandExecutable(workingDirectory,
+                _environment.WebRootPath, NullLogger.Instance);
             _executingProcess = exe.CreateProcess(command);
 
             var commandEvent = CommandEvent;
+
             _executingProcess.Exited += (sender, e) =>
             {
                 if (commandEvent != null)
@@ -127,10 +107,8 @@ namespace Kudu.Core.Commands
                         ExitCode = _executingProcess.ExitCode
                     });
                 }
-                exitCodeTask.TrySetResult(_executingProcess.ExitCode);
             };
 
-            bool nextLineIsDirectory = false;
             _executingProcess.OutputDataReceived += (sender, e) =>
             {
                 if (e.Data == null)
@@ -138,22 +116,9 @@ namespace Kudu.Core.Commands
                     return;
                 }
 
-                if (nextLineIsDirectory)
-                {
-                    workingDirTask.TrySetResult(e.Data);
-                    return;
-                }
-
-                string result = e.Data;
-                if (calculateWorkingDir && result.StartsWith(CurrentDirIdentifier, StringComparison.Ordinal))
-                {
-                    nextLineIsDirectory = true;
-                    result = String.Empty;
-                }
-
                 if (commandEvent != null)
                 {
-                    commandEvent(new CommandEvent(CommandEventType.Output, result));
+                    commandEvent(new CommandEvent(CommandEventType.Output, e.Data));
                 }
             };
 
@@ -175,18 +140,7 @@ namespace Kudu.Core.Commands
             _executingProcess.BeginErrorReadLine();
             _executingProcess.BeginOutputReadLine();
 
-            await Task.WhenAll(exitCodeTask.Task, workingDirTask.Task);
-
-            return new CommandResult
-            {
-                ExitCode = exitCodeTask.Task.Result,
-                CurrentDirectory = workingDirTask.Task.Result
-            };
-        }
-
-        public Task SendInput(string input)
-        {
-            return _executingProcess.StandardInput.WriteLineAsync(input);
+            _executingProcess.StandardInput.Close();
         }
 
         public void CancelCommand()
