@@ -97,13 +97,13 @@ $(function () {
         var prompt = getJSONValue(data);
         if (lastUserInput && prompt == lastUserInput)
             return;
-        if (windowsPathValidation(prompt.replace("\n", "").replace(">", ""))) {
+        var windowsPath = prompt.replace("\n", "").replace(">", "");
+        if (windowsPathValidation(windowsPath)) {
             if (!window.KuduExec.appRoot) {
-                window.KuduExec.appRoot = prompt.replace("\n", "").replace(">", "");
+                window.KuduExec.appRoot = windowsPath;
             } else {
-                curWorkingDir(prompt.replace("\n", "").replace(">", ""));
+                curWorkingDir(windowsPath);
             }
-            
         }
         
         //if the data has the same class as the last ".jquery-console-message"
