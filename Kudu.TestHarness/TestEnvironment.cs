@@ -100,25 +100,13 @@ namespace Kudu.TestHarness
             set;
         }
 
-        public string AlwaysOnJobsDataPath
+        public string JobsDataPath
         {
             get;
             set;
         }
 
-        public string TriggeredJobsDataPath
-        {
-            get;
-            set;
-        }
-
-        public string AlwaysOnJobsPath
-        {
-            get;
-            set;
-        }
-
-        public string TriggeredJobsPath
+        public string JobsBinariesPath
         {
             get;
             set;

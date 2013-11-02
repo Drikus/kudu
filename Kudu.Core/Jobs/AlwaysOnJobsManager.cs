@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Threading;
 using Kudu.Contracts.Jobs;
+using Kudu.Contracts.Settings;
 using Kudu.Core.Tracing;
 
 namespace Kudu.Core.Jobs
@@ -22,8 +23,8 @@ namespace Kudu.Core.Jobs
 
         private bool _makingChanges;
 
-        public AlwaysOnJobsManager(ITraceFactory traceFactory, IEnvironment environment, IFileSystem fileSystem)
-            : base(traceFactory, environment, fileSystem)
+        public AlwaysOnJobsManager(ITraceFactory traceFactory, IEnvironment environment, IFileSystem fileSystem, IDeploymentSettingsManager settings)
+            : base(traceFactory, environment, fileSystem, settings, Constants.AlwaysOnPath)
         {
             foreach (AlwaysOnJob alwaysOnJob in ListJobs())
             {
@@ -37,12 +38,12 @@ namespace Kudu.Core.Jobs
 
         public override IEnumerable<AlwaysOnJob> ListJobs()
         {
-            return ListJobs(Environment.AlwaysOnJobsPath);
+            return ListJobsInternal();
         }
 
         public override AlwaysOnJob GetJob(string jobName)
         {
-            return GetJob(jobName, Environment.AlwaysOnJobsPath);
+            return GetJobInternal(jobName);
         }
 
         private void OnMakeChanges(object state)
@@ -83,7 +84,7 @@ namespace Kudu.Core.Jobs
             AlwaysOnJobRunner alwaysOnJobRunner;
             if (!_alwaysOnJobRunners.TryGetValue(alwaysOnJob.Name, out alwaysOnJobRunner))
             {
-                alwaysOnJobRunner = new AlwaysOnJobRunner(alwaysOnJob.Name, alwaysOnJob.BinariesPath, Environment, FileSystem, TraceFactory);
+                alwaysOnJobRunner = new AlwaysOnJobRunner(alwaysOnJob.Name, Environment, FileSystem, Settings, TraceFactory);
             }
 
             alwaysOnJobRunner.Refresh(alwaysOnJob);
@@ -104,13 +105,13 @@ namespace Kudu.Core.Jobs
 
         private void StartWatcher(object state)
         {
-            if (!FileSystem.Directory.Exists(Environment.AlwaysOnJobsPath))
+            if (!FileSystem.Directory.Exists(JobsBinariesPath))
             {
                 _startFileWatcherTimer.Change(30 * 1000, Timeout.Infinite);
                 return;
             }
 
-            _fileSystemWatcher = new FileSystemWatcher(Environment.AlwaysOnJobsPath);
+            _fileSystemWatcher = new FileSystemWatcher(JobsBinariesPath);
             _fileSystemWatcher.Changed += OnChanged;
             _fileSystemWatcher.Deleted += OnChanged;
             _fileSystemWatcher.Renamed += OnChanged;
@@ -122,9 +123,9 @@ namespace Kudu.Core.Jobs
         private void OnChanged(object sender, FileSystemEventArgs e)
         {
             string path = e.FullPath;
-            if (path != null && path.Length > Environment.AlwaysOnJobsPath.Length)
+            if (path != null && path.Length > JobsBinariesPath.Length)
             {
-                path = path.Substring(Environment.AlwaysOnJobsPath.Length);
+                path = path.Substring(JobsBinariesPath.Length);
                 int firstSeparator = path.IndexOf(Path.DirectorySeparatorChar);
                 if (firstSeparator > 0)
                 {

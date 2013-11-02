@@ -1,9 +1,10 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.IO.Abstractions;
-using System.Threading.Tasks;
+using System.Threading;
 using Kudu.Contracts.Jobs;
+using Kudu.Contracts.Settings;
 using Kudu.Contracts.Tracing;
+using Kudu.Core.Hooks;
 using Kudu.Core.Infrastructure;
 using Kudu.Core.Tracing;
 
@@ -13,10 +14,10 @@ namespace Kudu.Core.Jobs
     {
         private readonly LockFile _lockFile;
 
-        public TriggeredJobRunner(string jobName, string jobBinariesPath, IEnvironment environment, IFileSystem fileSystem, ITraceFactory traceFactory)
-            : base(jobName, jobBinariesPath, environment, fileSystem, traceFactory)
+        public TriggeredJobRunner(string jobName, IEnvironment environment, IFileSystem fileSystem, IDeploymentSettingsManager settings, ITraceFactory traceFactory)
+            : base(jobName, Constants.TriggeredPath, environment, fileSystem, settings, traceFactory)
         {
-            _lockFile = new LockFile(Path.Combine(DataPath, "triggeredJob.lock"), TraceFactory, FileSystem);
+            _lockFile = new LockFile(Path.Combine(JobDataPath, "triggeredJob.lock"), TraceFactory, FileSystem);
         }
 
         protected override string JobEnvironmentKeyPrefix
@@ -24,11 +25,11 @@ namespace Kudu.Core.Jobs
             get { return "WEBSITE_TRIGGERED_JOB_RUNNING_"; }
         }
 
-        public Task RunJobInstanceAsync(TriggeredJob triggeredJob, ITracer tracer)
+        public void StartJobRun(TriggeredJob triggeredJob, ITracer tracer)
         {
             if (!_lockFile.Lock())
             {
-                throw new InvalidOperationException("Job {0} is already running".FormatInvariant(JobName));
+                throw new ConflictException();
             }
 
             try
@@ -36,7 +37,7 @@ namespace Kudu.Core.Jobs
                 InitializeJobInstance(triggeredJob, tracer);
 
                 // TODO: Use actual async code
-                return Task.Factory.StartNew(() =>
+                ThreadPool.QueueUserWorkItem(_ =>
                 {
                     try
                     {

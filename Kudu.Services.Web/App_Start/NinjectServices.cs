@@ -198,9 +198,9 @@ namespace Kudu.Services.Web.App_Start
             kernel.Bind<IWebHooksManager>().To<WebHooksManager>()
                                              .InRequestScope();
 
-            kernel.Bind<IJobsManager<TriggeredJob>>().To<TriggeredJobsManager>()
+            kernel.Bind<ITriggeredJobsManager>().To<TriggeredJobsManager>()
                                              .InRequestScope();
-            kernel.Bind<IJobsManager<AlwaysOnJob>>().To<AlwaysOnJobsManager>()
+            kernel.Bind<IAlwaysOnJobsManager>().To<AlwaysOnJobsManager>()
                                              .InRequestScope();
 
             kernel.Bind<ILogger>().ToMethod(context => GetLogger(environment, context.Kernel))
@@ -353,9 +353,12 @@ namespace Kudu.Services.Web.App_Start
             routes.MapHttpRoute("subscribe-hook", "hooks", new { controller = "WebHooks", action = "Subscribe" }, new { verb = new HttpMethodConstraint("POST") });
 
             // Jobs
-            routes.MapHttpRoute("get-all-jobs", "jobs", new { controller = "Jobs", action = "GetAllJobs" }, new { verb = new HttpMethodConstraint("GET") });
-            routes.MapHttpRoute("get-always-on-jobs", "jobs/alwaysOn", new { controller = "Jobs", action = "GetAlwaysOnJobs" }, new { verb = new HttpMethodConstraint("GET") });
-            routes.MapHttpRoute("get-triggered-jobs", "jobs/triggered", new { controller = "Jobs", action = "GetTriggeredJobs" }, new { verb = new HttpMethodConstraint("GET") });
+            routes.MapHttpRoute("list-all-jobs", "jobs", new { controller = "Jobs", action = "ListAllJobs" }, new { verb = new HttpMethodConstraint("GET") });
+            routes.MapHttpRoute("list-always-on-jobs", "jobs/alwaysOn", new { controller = "Jobs", action = "ListAlwaysOnJobs" }, new { verb = new HttpMethodConstraint("GET") });
+            routes.MapHttpRoute("list-triggered-jobs", "jobs/triggered", new { controller = "Jobs", action = "ListTriggeredJobs" }, new { verb = new HttpMethodConstraint("GET") });
+            routes.MapHttpRoute("get-triggered-job", "jobs/triggered/{jobName}", new { controller = "Jobs", action = "GetTriggeredJob" }, new { verb = new HttpMethodConstraint("GET") });
+            routes.MapHttpRoute("get-always-on-job", "jobs/alwaysOn/{jobName}", new { controller = "Jobs", action = "GetAlwaysOnJob" }, new { verb = new HttpMethodConstraint("GET") });
+            routes.MapHttpRoute("invoke-triggered-job", "jobs/triggered/{jobName}", new { controller = "Jobs", action = "InvokeTriggeredJob" }, new { verb = new HttpMethodConstraint("POST") });
         }
 
         // Perform migration tasks to deal with legacy sites that had different file layout

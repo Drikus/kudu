@@ -4,6 +4,7 @@ using System.IO.Abstractions;
 using System.Threading;
 using System.Threading.Tasks;
 using Kudu.Contracts.Jobs;
+using Kudu.Contracts.Settings;
 using Kudu.Contracts.Tracing;
 using Kudu.Core.Tracing;
 
@@ -14,8 +15,8 @@ namespace Kudu.Core.Jobs
         private int _started = 0;
         private Task _task;
 
-        public AlwaysOnJobRunner(string jobName, string jobBinariesPath, IEnvironment environment, IFileSystem fileSystem, ITraceFactory traceFactory)
-            : base(jobName, jobBinariesPath, environment, fileSystem, traceFactory)
+        public AlwaysOnJobRunner(string jobName, IEnvironment environment, IFileSystem fileSystem, IDeploymentSettingsManager settings, ITraceFactory traceFactory)
+            : base(jobName, Constants.AlwaysOnPath, environment, fileSystem, settings, traceFactory)
         {
         }
 

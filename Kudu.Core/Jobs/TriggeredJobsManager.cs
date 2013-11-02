@@ -3,8 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
-using System.Threading.Tasks;
 using Kudu.Contracts.Jobs;
+using Kudu.Contracts.Settings;
 using Kudu.Contracts.Tracing;
 using Kudu.Core.Tracing;
 
@@ -15,22 +15,22 @@ namespace Kudu.Core.Jobs
         private readonly ConcurrentDictionary<string, TriggeredJobRunner> _triggeredJobRunners =
             new ConcurrentDictionary<string, TriggeredJobRunner>(StringComparer.OrdinalIgnoreCase);
 
-        public TriggeredJobsManager(ITraceFactory traceFactory, IEnvironment environment, IFileSystem fileSystem)
-            : base(traceFactory, environment, fileSystem)
+        public TriggeredJobsManager(ITraceFactory traceFactory, IEnvironment environment, IFileSystem fileSystem, IDeploymentSettingsManager settings)
+            : base(traceFactory, environment, fileSystem, settings, Constants.TriggeredPath)
         {
         }
 
         public override IEnumerable<TriggeredJob> ListJobs()
         {
-            return ListJobs(Environment.TriggeredJobsPath);
+            return ListJobsInternal();
         }
 
         public override TriggeredJob GetJob(string jobName)
         {
-            return GetJob(jobName, Environment.TriggeredJobsPath);
+            return GetJobInternal(jobName);
         }
 
-        public async Task InvokeTriggeredJob(string jobName)
+        public void InvokeTriggeredJob(string jobName)
         {
             ITracer tracer = TraceFactory.GetTracer();
             using (tracer.Step("jobsManager.InvokeTriggeredJob"))
@@ -45,9 +45,9 @@ namespace Kudu.Core.Jobs
                 TriggeredJobRunner triggeredJobRunner =
                     _triggeredJobRunners.GetOrAdd(
                         jobName,
-                        _ => new TriggeredJobRunner(triggeredJob.Name, triggeredJob.BinariesPath, Environment, FileSystem, TraceFactory));
+                        _ => new TriggeredJobRunner(triggeredJob.Name, Environment, FileSystem, Settings, TraceFactory));
 
-                await triggeredJobRunner.RunJobInstanceAsync(triggeredJob, tracer);
+                triggeredJobRunner.StartJobRun(triggeredJob, tracer);
             }
         }
     }

@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using Kudu.Contracts.Jobs;
+using Kudu.Contracts.Settings;
 using Kudu.Core.Tracing;
 
 namespace Kudu.Core.Jobs
@@ -26,21 +27,26 @@ namespace Kudu.Core.Jobs
 
         protected IEnvironment Environment { get; private set; }
         protected IFileSystem FileSystem { get; private set; }
+        protected IDeploymentSettingsManager Settings { get; private set; }
         protected ITraceFactory TraceFactory { get; private set; }
+        protected string JobsBinariesPath { get; private set; }
 
-        protected JobsManagerBase(ITraceFactory traceFactory, IEnvironment environment, IFileSystem fileSystem)
+        protected JobsManagerBase(ITraceFactory traceFactory, IEnvironment environment, IFileSystem fileSystem, IDeploymentSettingsManager settings, string jobsTypePath)
         {
             TraceFactory = traceFactory;
             Environment = environment;
             FileSystem = fileSystem;
+            Settings = settings;
+
+            JobsBinariesPath = Path.Combine(Environment.JobsBinariesPath, jobsTypePath);
         }
 
         public abstract IEnumerable<TJob> ListJobs();
         public abstract TJob GetJob(string jobName);
 
-        protected TJob GetJob(string jobName, string jobsPath)
+        protected TJob GetJobInternal(string jobName)
         {
-            IEnumerable<TJob> jobs = ListJobs(jobsPath, jobName);
+            IEnumerable<TJob> jobs = ListJobsInternal(jobName);
             int jobsCount = jobs.Count();
             if (jobsCount == 0)
             {
@@ -55,16 +61,16 @@ namespace Kudu.Core.Jobs
             return jobs.First();
         }
 
-        protected IEnumerable<TJob> ListJobs(string jobsPath, string searchPattern = "*")
+        protected IEnumerable<TJob> ListJobsInternal(string searchPattern = "*")
         {
             var jobs = new List<TJob>();
 
-            if (!FileSystem.Directory.Exists(jobsPath))
+            if (!FileSystem.Directory.Exists(JobsBinariesPath))
             {
                 return Enumerable.Empty<TJob>();
             }
 
-            DirectoryInfoBase jobsDirectory = FileSystem.DirectoryInfo.FromDirectoryName(jobsPath);
+            DirectoryInfoBase jobsDirectory = FileSystem.DirectoryInfo.FromDirectoryName(JobsBinariesPath);
             DirectoryInfoBase[] jobDirectories = jobsDirectory.GetDirectories(searchPattern, SearchOption.TopDirectoryOnly);
             foreach (DirectoryInfoBase jobDirectory in jobDirectories)
             {

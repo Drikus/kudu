@@ -5,7 +5,10 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Text;
 using Kudu.Contracts.Jobs;
+using Kudu.Contracts.Settings;
 using Kudu.Contracts.Tracing;
+using Kudu.Core.Deployment;
+using Kudu.Core.Deployment.Generator;
 using Kudu.Core.Infrastructure;
 using Kudu.Core.Tracing;
 
@@ -15,25 +18,31 @@ namespace Kudu.Core.Jobs
     {
         protected IEnvironment Environment { get; private set; }
         protected IFileSystem FileSystem { get; private set; }
+        protected IDeploymentSettingsManager Settings { get; private set; }
         protected ITraceFactory TraceFactory { get; private set; }
 
         protected string JobName { get; private set; }
         protected string JobBinariesPath { get; private set; }
-        protected string TempJobPath { get; private set; }
-        protected string DataPath { get; private set; }
+        protected string JobTempPath { get; private set; }
+        protected string JobDataPath { get; private set; }
 
         protected string WorkingDirectory { get; private set; }
 
-        protected BaseJobRunner(string jobName, string jobBinariesPath, IEnvironment environment, IFileSystem fileSystem, ITraceFactory traceFactory)
+        private ExternalCommandFactory _externalCommandFactory;
+
+        protected BaseJobRunner(string jobName, string jobsTypePath, IEnvironment environment, IFileSystem fileSystem, IDeploymentSettingsManager settings, ITraceFactory traceFactory)
         {
             TraceFactory = traceFactory;
             Environment = environment;
             FileSystem = fileSystem;
+            Settings = settings;
             JobName = jobName;
-            JobBinariesPath = jobBinariesPath;
 
-            TempJobPath = Path.Combine(Environment.TempPath, Constants.AlwaysOnPath, jobName);
-            DataPath = Path.Combine(Environment.AlwaysOnJobsDataPath, jobName);
+            JobBinariesPath = Path.Combine(Environment.JobsBinariesPath, jobsTypePath, jobName);
+            JobTempPath = Path.Combine(Environment.TempPath, Constants.JobsPath, jobsTypePath, jobName);
+            JobDataPath = Path.Combine(Environment.DataPath, jobsTypePath, jobName);
+
+            _externalCommandFactory = new ExternalCommandFactory(Environment, Settings, Environment.RepositoryPath);
         }
 
         private int CalculateHashForJob(string jobBinariesPath)
@@ -64,19 +73,19 @@ namespace Kudu.Core.Jobs
 
             SafeKillAllRunningJobInstances(tracer);
 
-            if (FileSystem.Directory.Exists(TempJobPath))
+            if (FileSystem.Directory.Exists(JobTempPath))
             {
-                FileSystemHelpers.DeleteDirectoryContentsSafe(TempJobPath, true);
+                FileSystemHelpers.DeleteDirectoryContentsSafe(JobTempPath, true);
             }
 
-            if (FileSystem.Directory.Exists(TempJobPath))
+            if (FileSystem.Directory.Exists(JobTempPath))
             {
                 tracer.TraceWarning("Failed to delete temporary directory");
             }
 
             try
             {
-                var tempJobInstancePath = Path.Combine(TempJobPath, Path.GetRandomFileName());
+                var tempJobInstancePath = Path.Combine(JobTempPath, Path.GetRandomFileName());
 
                 FileSystemHelpers.CopyDirectoryRecursive(FileSystem, JobBinariesPath, tempJobInstancePath);
 
@@ -134,10 +143,11 @@ namespace Kudu.Core.Jobs
             {
                 try
                 {
-                    var exe = new Executable(job.ScriptHost.HostPath, WorkingDirectory, TimeSpan.MaxValue);
+                    var exe = _externalCommandFactory.BuildExternalCommandExecutable(job.ScriptHost.HostPath, WorkingDirectory);
 
                     // Set environment variable to be able to identify all processes spawned for this job
                     exe.EnvironmentVariables[GetJobEnvironmentKey()] = "true";
+                    exe.EnvironmentVariables[WellKnownEnvironmentVariables.JobRootPath] = job.BinariesPath;
 
                     exe.ExecuteWithoutIdleManager(tracer, (message) => tracer.Trace(message), tracer.TraceError, TimeSpan.MaxValue,
                                                   job.ScriptHost.ArgumentsFormat, scriptFileName);

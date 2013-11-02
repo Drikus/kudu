@@ -18,9 +18,7 @@
         string AnalyticsPath { get; }           // e.g. %temp%/siteExtLogs
         string DeploymentTracePath { get; }     // e.g. /logfiles/git/deployment
         string DataPath { get; }                // e.g. /data
-        string AlwaysOnJobsDataPath { get; }    // e.g. /data/jobs/alwaysOn
-        string TriggeredJobsDataPath { get; }   // e.g. /data/jobs/alwaysOn
-        string AlwaysOnJobsPath { get; }        // e.g. /site/wwwroot/app_data/jobs/alwaysOn
-        string TriggeredJobsPath { get; }       // e.g. /site/wwwroot/app_data/jobs/triggered
+        string JobsDataPath { get; }            // e.g. /data/jobs
+        string JobsBinariesPath { get; }        // e.g. /site/wwwroot/app_data/jobs
     }
 }

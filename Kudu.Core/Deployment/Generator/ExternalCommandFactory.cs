@@ -85,6 +85,48 @@ namespace Kudu.Core.Deployment.Generator
             return exe;
         }
 
+        // TODO: Refactor code
+        public Executable BuildExternalCommandExecutable(string commandPath, string workingDirectory)
+        {
+            ILogger logger = new NullLogger();
+
+            // Creates an executable pointing to cmd and the working directory being
+            // the repository root
+            var exe = new Executable(commandPath, workingDirectory, _deploymentSettings.GetCommandIdleTimeout());
+            exe.AddDeploymentSettingsAsEnvironmentVariables(_deploymentSettings);
+            UpdateToDefaultIfNotSet(exe, WellKnownEnvironmentVariables.WebRootPath, _environment.WebRootPath, logger);
+            UpdateToDefaultIfNotSet(exe, WellKnownEnvironmentVariables.MSBuildPath, PathUtility.ResolveMSBuildPath(), logger);
+            UpdateToDefaultIfNotSet(exe, WellKnownEnvironmentVariables.KuduSyncCommandKey, KuduSyncCommand, logger);
+            UpdateToDefaultIfNotSet(exe, WellKnownEnvironmentVariables.NuGetExeCommandKey, NuGetExeCommand, logger);
+            UpdateToDefaultIfNotSet(exe, WellKnownEnvironmentVariables.PostDeploymentActionsCommandKey, PostDeploymentActionsCommand, logger);
+            UpdateToDefaultIfNotSet(exe, WellKnownEnvironmentVariables.PostDeploymentActionsDirectoryKey, PostDeploymentActionsDir, logger);
+            UpdateToDefaultIfNotSet(exe, WellKnownEnvironmentVariables.SelectNodeVersionCommandKey, SelectNodeVersionCommand, logger);
+            UpdateToDefaultIfNotSet(exe, WellKnownEnvironmentVariables.NpmJsPathKey, PathUtility.ResolveNpmJsPath(), logger);
+
+            exe.SetHomePath(_environment);
+
+            // Set the path so we can add more variables
+            string path = System.Environment.GetEnvironmentVariable("PATH");
+            exe.EnvironmentVariables["PATH"] = path;
+
+            // Add the msbuild path and git path to the %PATH% so more tools are available
+            var toolsPaths = new List<string> {
+                Path.GetDirectoryName(PathUtility.ResolveMSBuildPath()),
+                Path.GetDirectoryName(PathUtility.ResolveGitPath()),
+                Path.GetDirectoryName(PathUtility.ResolveVsTestPath())
+            };
+
+            string nodeExePath = PathUtility.ResolveNodePath();
+            if (!String.IsNullOrEmpty(nodeExePath))
+            {
+                // If IIS node path is available prepend it to the path list so that it's discovered before any other node versions in the path.
+                toolsPaths.Add(Path.GetDirectoryName(nodeExePath));
+            }
+
+            exe.PrependToPath(toolsPaths);
+            return exe;
+        }
+
         private string KuduSyncCommand
         {
             get
