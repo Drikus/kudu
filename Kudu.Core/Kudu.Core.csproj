@@ -60,8 +60,8 @@
     <Compile Include="Deployment\Generator\SiteBuilderFactory.cs" />
     <Compile Include="Hooks\WebHooksManager.cs" />
     <Compile Include="Infrastructure\ProcessEnvironment.cs" />
-    <Compile Include="Jobs\AlwaysOnJobRunner.cs" />
-    <Compile Include="Jobs\AlwaysOnJobsManager.cs" />
+    <Compile Include="Jobs\ContinuousJobRunner.cs" />
+    <Compile Include="Jobs\ContinuousJobsManager.cs" />
     <Compile Include="Jobs\BaseJobRunner.cs" />
     <Compile Include="Jobs\BashScriptHost.cs" />
     <Compile Include="Jobs\TriggeredJobRunner.cs" />
