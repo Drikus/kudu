@@ -10,13 +10,13 @@ using Kudu.Core.Tracing;
 
 namespace Kudu.Core.Jobs
 {
-    public class AlwaysOnJobRunner : BaseJobRunner
+    public class ContinuousJobRunner : BaseJobRunner
     {
         private int _started = 0;
         private Task _task;
 
-        public AlwaysOnJobRunner(string jobName, IEnvironment environment, IFileSystem fileSystem, IDeploymentSettingsManager settings, ITraceFactory traceFactory)
-            : base(jobName, Constants.AlwaysOnPath, environment, fileSystem, settings, traceFactory)
+        public ContinuousJobRunner(string jobName, IEnvironment environment, IFileSystem fileSystem, IDeploymentSettingsManager settings, ITraceFactory traceFactory)
+            : base(jobName, Constants.ContinuousPath, environment, fileSystem, settings, traceFactory)
         {
         }
 
@@ -25,7 +25,7 @@ namespace Kudu.Core.Jobs
             get { return "WEBSITE_ALWAYS_ON_JOB_RUNNING_"; }
         }
 
-        private void StartJobAsync(AlwaysOnJob alwaysOnJob)
+        private void StartJobAsync(ContinuousJob continuousJob)
         {
             if (Interlocked.Exchange(ref _started, 1) == 1)
             {
@@ -36,12 +36,12 @@ namespace Kudu.Core.Jobs
             _task = Task.Factory.StartNew(() =>
                 {
                     ITracer tracer = TraceFactory.GetTracer();
-                    using (tracer.Step("AlwaysOnJobRunner.StartJobAsync"))
+                    using (tracer.Step("ContinuousJobRunner.StartJobAsync"))
                     {
                         while (_started == 1)
                         {
-                            InitializeJobInstance(alwaysOnJob, tracer);
-                            RunJobInstance(alwaysOnJob, tracer);
+                            InitializeJobInstance(continuousJob, tracer);
+                            RunJobInstance(continuousJob, tracer);
 
                             WaitForTimeOrStop(TimeSpan.FromSeconds(30));
                         }
@@ -52,20 +52,20 @@ namespace Kudu.Core.Jobs
         public void Stop()
         {
             ITracer tracer = TraceFactory.GetTracer();
-            using (tracer.Step("AlwaysOnJobRunner.Stop"))
+            using (tracer.Step("ContinuousJobRunner.Stop"))
             {
                 Interlocked.Exchange(ref _started, 0);
                 SafeKillAllRunningJobInstances(tracer);
             }
         }
 
-        public void Refresh(AlwaysOnJob alwaysOnJob)
+        public void Refresh(ContinuousJob continuousJob)
         {
             ITracer tracer = TraceFactory.GetTracer();
-            using (tracer.Step("AlwaysOnJobRunner.Refresh"))
+            using (tracer.Step("ContinuousJobRunner.Refresh"))
             {
                 SafeKillAllRunningJobInstances(tracer);
-                StartJobAsync(alwaysOnJob);
+                StartJobAsync(continuousJob);
             }
         }
 

@@ -200,7 +200,7 @@ namespace Kudu.Services.Web.App_Start
 
             kernel.Bind<ITriggeredJobsManager>().To<TriggeredJobsManager>()
                                              .InRequestScope();
-            kernel.Bind<IAlwaysOnJobsManager>().To<AlwaysOnJobsManager>()
+            kernel.Bind<IContinuousJobsManager>().To<ContinuousJobsManager>()
                                              .InRequestScope();
 
             kernel.Bind<ILogger>().ToMethod(context => GetLogger(environment, context.Kernel))
@@ -354,10 +354,10 @@ namespace Kudu.Services.Web.App_Start
 
             // Jobs
             routes.MapHttpRoute("list-all-jobs", "jobs", new { controller = "Jobs", action = "ListAllJobs" }, new { verb = new HttpMethodConstraint("GET") });
-            routes.MapHttpRoute("list-always-on-jobs", "jobs/alwaysOn", new { controller = "Jobs", action = "ListAlwaysOnJobs" }, new { verb = new HttpMethodConstraint("GET") });
+            routes.MapHttpRoute("list-always-on-jobs", "jobs/continuous", new { controller = "Jobs", action = "ListContinuousJobs" }, new { verb = new HttpMethodConstraint("GET") });
             routes.MapHttpRoute("list-triggered-jobs", "jobs/triggered", new { controller = "Jobs", action = "ListTriggeredJobs" }, new { verb = new HttpMethodConstraint("GET") });
             routes.MapHttpRoute("get-triggered-job", "jobs/triggered/{jobName}", new { controller = "Jobs", action = "GetTriggeredJob" }, new { verb = new HttpMethodConstraint("GET") });
-            routes.MapHttpRoute("get-always-on-job", "jobs/alwaysOn/{jobName}", new { controller = "Jobs", action = "GetAlwaysOnJob" }, new { verb = new HttpMethodConstraint("GET") });
+            routes.MapHttpRoute("get-always-on-job", "jobs/continuous/{jobName}", new { controller = "Jobs", action = "GetContinuousJob" }, new { verb = new HttpMethodConstraint("GET") });
             routes.MapHttpRoute("invoke-triggered-job", "jobs/triggered/{jobName}", new { controller = "Jobs", action = "InvokeTriggeredJob" }, new { verb = new HttpMethodConstraint("POST") });
         }
 

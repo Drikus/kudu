@@ -15,21 +15,21 @@ namespace Kudu.Services.Jobs
     {
         private readonly ITracer _tracer;
         private readonly ITriggeredJobsManager _triggeredJobsManager;
-        private readonly IAlwaysOnJobsManager _alwaysOnJobsManager;
+        private readonly IContinuousJobsManager _continuousJobsManager;
 
-        public JobsController(ITracer tracer, ITriggeredJobsManager triggeredJobsManager, IAlwaysOnJobsManager alwaysOnJobsManager)
+        public JobsController(ITracer tracer, ITriggeredJobsManager triggeredJobsManager, IContinuousJobsManager continuousJobsManager)
         {
             _tracer = tracer;
             _triggeredJobsManager = triggeredJobsManager;
-            _alwaysOnJobsManager = alwaysOnJobsManager;
+            _continuousJobsManager = continuousJobsManager;
         }
 
         [HttpGet]
-        public HttpResponseMessage ListAlwaysOnJobs()
+        public HttpResponseMessage ListContinuousJobs()
         {
-            IEnumerable<AlwaysOnJob> alwaysOnJobs = ListJobs(_alwaysOnJobsManager.ListJobs, "alwaysOn");
+            IEnumerable<ContinuousJob> continuousJobs = ListJobs(_continuousJobsManager.ListJobs, "continuous");
 
-            return Request.CreateResponse(HttpStatusCode.OK, alwaysOnJobs);
+            return Request.CreateResponse(HttpStatusCode.OK, continuousJobs);
         }
 
         [HttpGet]
@@ -43,12 +43,12 @@ namespace Kudu.Services.Jobs
         [HttpGet]
         public HttpResponseMessage ListAllJobs()
         {
-            IEnumerable<AlwaysOnJob> alwaysOnJobs = ListJobs(_alwaysOnJobsManager.ListJobs, "alwaysOn");
+            IEnumerable<ContinuousJob> continuousJobs = ListJobs(_continuousJobsManager.ListJobs, "continuous");
             IEnumerable<TriggeredJob> triggeredJobs = ListJobs(_triggeredJobsManager.ListJobs, "triggered");
 
             var allJobs = new AllJobs()
             {
-                AlwaysOnJobs = alwaysOnJobs,
+                ContinuousJobs = continuousJobs,
                 TriggeredJobs = triggeredJobs
             };
 
@@ -56,13 +56,13 @@ namespace Kudu.Services.Jobs
         }
 
         [HttpGet]
-        public HttpResponseMessage GetAlwaysOnJob(string jobName)
+        public HttpResponseMessage GetContinuousJob(string jobName)
         {
-            AlwaysOnJob alwaysOnJob = _alwaysOnJobsManager.GetJob(jobName);
-            if (alwaysOnJob != null)
+            ContinuousJob continuousJob = _continuousJobsManager.GetJob(jobName);
+            if (continuousJob != null)
             {
-                UpdateJobUrl(alwaysOnJob, Request, null);
-                return Request.CreateResponse(HttpStatusCode.OK, alwaysOnJob);
+                UpdateJobUrl(continuousJob, Request, null);
+                return Request.CreateResponse(HttpStatusCode.OK, continuousJob);
             }
 
             return Request.CreateResponse(HttpStatusCode.NotFound);

@@ -9,9 +9,9 @@ using Kudu.Core.Tracing;
 
 namespace Kudu.Core.Jobs
 {
-    public class AlwaysOnJobsManager : JobsManagerBase<AlwaysOnJob>, IAlwaysOnJobsManager
+    public class ContinuousJobsManager : JobsManagerBase<ContinuousJob>, IContinuousJobsManager
     {
-        private readonly Dictionary<string, AlwaysOnJobRunner> _alwaysOnJobRunners = new Dictionary<string, AlwaysOnJobRunner>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, ContinuousJobRunner> _continuousJobRunners = new Dictionary<string, ContinuousJobRunner>(StringComparer.OrdinalIgnoreCase);
 
         private HashSet<string> _updatedJobs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -23,12 +23,12 @@ namespace Kudu.Core.Jobs
 
         private bool _makingChanges;
 
-        public AlwaysOnJobsManager(ITraceFactory traceFactory, IEnvironment environment, IFileSystem fileSystem, IDeploymentSettingsManager settings)
-            : base(traceFactory, environment, fileSystem, settings, Constants.AlwaysOnPath)
+        public ContinuousJobsManager(ITraceFactory traceFactory, IEnvironment environment, IFileSystem fileSystem, IDeploymentSettingsManager settings)
+            : base(traceFactory, environment, fileSystem, settings, Constants.ContinuousPath)
         {
-            foreach (AlwaysOnJob alwaysOnJob in ListJobs())
+            foreach (ContinuousJob continuousJob in ListJobs())
             {
-                UpdateJob(alwaysOnJob);
+                UpdateJob(continuousJob);
             }
 
             _makeChangesTimer = new Timer(OnMakeChanges);
@@ -36,12 +36,12 @@ namespace Kudu.Core.Jobs
             _startFileWatcherTimer.Change(0, Timeout.Infinite);
         }
 
-        public override IEnumerable<AlwaysOnJob> ListJobs()
+        public override IEnumerable<ContinuousJob> ListJobs()
         {
             return ListJobsInternal();
         }
 
-        public override AlwaysOnJob GetJob(string jobName)
+        public override ContinuousJob GetJob(string jobName)
         {
             return GetJobInternal(jobName);
         }
@@ -67,40 +67,40 @@ namespace Kudu.Core.Jobs
 
             foreach (string updatedJobName in updatedJobs)
             {
-                AlwaysOnJob alwaysOnJob = GetJob(updatedJobName);
-                if (alwaysOnJob == null)
+                ContinuousJob continuousJob = GetJob(updatedJobName);
+                if (continuousJob == null)
                 {
                     RemoveJob(updatedJobName);
                 }
                 else
                 {
-                    UpdateJob(alwaysOnJob);
+                    UpdateJob(continuousJob);
                 }
             }
         }
 
-        private void UpdateJob(AlwaysOnJob alwaysOnJob)
+        private void UpdateJob(ContinuousJob continuousJob)
         {
-            AlwaysOnJobRunner alwaysOnJobRunner;
-            if (!_alwaysOnJobRunners.TryGetValue(alwaysOnJob.Name, out alwaysOnJobRunner))
+            ContinuousJobRunner continuousJobRunner;
+            if (!_continuousJobRunners.TryGetValue(continuousJob.Name, out continuousJobRunner))
             {
-                alwaysOnJobRunner = new AlwaysOnJobRunner(alwaysOnJob.Name, Environment, FileSystem, Settings, TraceFactory);
+                continuousJobRunner = new ContinuousJobRunner(continuousJob.Name, Environment, FileSystem, Settings, TraceFactory);
             }
 
-            alwaysOnJobRunner.Refresh(alwaysOnJob);
+            continuousJobRunner.Refresh(continuousJob);
         }
 
         private void RemoveJob(string updatedJobName)
         {
-            AlwaysOnJobRunner alwaysOnJobRunner;
-            if (!_alwaysOnJobRunners.TryGetValue(updatedJobName, out alwaysOnJobRunner))
+            ContinuousJobRunner continuousJobRunner;
+            if (!_continuousJobRunners.TryGetValue(updatedJobName, out continuousJobRunner))
             {
                 return;
             }
 
-            alwaysOnJobRunner.Stop();
+            continuousJobRunner.Stop();
 
-            _alwaysOnJobRunners.Remove(updatedJobName);
+            _continuousJobRunners.Remove(updatedJobName);
         }
 
         private void StartWatcher(object state)

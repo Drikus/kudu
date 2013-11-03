@@ -1,6 +1,6 @@
 ﻿namespace Kudu.Contracts.Jobs
 {
-    public interface IAlwaysOnJobsManager : IJobsManager<AlwaysOnJob>
+    public interface IContinuousJobsManager : IJobsManager<ContinuousJob>
     {
     }
 }

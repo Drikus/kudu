@@ -30,7 +30,7 @@ namespace Kudu.Contracts.Jobs
     }
 
     [DataContract]
-    public class AlwaysOnJob : JobBase
+    public class ContinuousJob : JobBase
     {
     }
 
@@ -43,8 +43,8 @@ namespace Kudu.Contracts.Jobs
     [DataContract]
     public class AllJobs
     {
-        [DataMember(Name = "alwaysOnJobs")]
-        public IEnumerable<AlwaysOnJob> AlwaysOnJobs { get; set; }
+        [DataMember(Name = "continuousJobs")]
+        public IEnumerable<ContinuousJob> ContinuousJobs { get; set; }
 
         [DataMember(Name = "triggeredJobs")]
         public IEnumerable<TriggeredJob> TriggeredJobs { get; set; }

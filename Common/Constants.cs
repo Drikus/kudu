@@ -33,7 +33,7 @@ namespace Kudu
         public const string AppDataPath = "App_Data";
         public const string DataPath = "data";
         public const string JobsPath = "jobs";
-        public const string AlwaysOnPath = "alwaysOn";
+        public const string ContinuousPath = "continuous";
         public const string TriggeredPath = "triggered";
 
         // Kudu trace text file related
