@@ -125,7 +125,7 @@ namespace Kudu.Core.Jobs
             string path = e.FullPath;
             if (path != null && path.Length > JobsBinariesPath.Length)
             {
-                path = path.Substring(JobsBinariesPath.Length);
+                path = path.Substring(JobsBinariesPath.Length).TrimStart(Path.DirectorySeparatorChar);
                 int firstSeparator = path.IndexOf(Path.DirectorySeparatorChar);
                 if (firstSeparator > 0)
                 {

@@ -409,7 +409,7 @@ namespace Kudu.Services.Web.App_Start
             if (level > TraceLevel.Off)
             {
                 string tracePath = Path.Combine(environment.TracePath, Constants.TraceFile);
-                string textPath = Path.Combine(environment.TracePath, TraceServices.CurrentRequestTraceFile);
+                string textPath = Path.Combine(environment.TracePath, TraceServices.CurrentRequestTraceFile ?? "trace.xml");
                 string traceLockPath = Path.Combine(environment.TracePath, Constants.TraceLockFile);
                 var traceLock = new LockFile(traceLockPath);
                 return new CascadeTracer(new Tracer(tracePath, level, traceLock), new TextTracer(textPath, level));
