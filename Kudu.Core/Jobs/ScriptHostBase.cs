@@ -20,11 +20,6 @@ namespace Kudu.Core.Jobs
 
         public string ArgumentsFormat { get; private set; }
 
-        public virtual bool IsSupported
-        {
-            get { return !string.IsNullOrEmpty(HostPath); }
-        }
-
         public abstract IEnumerable<string> SupportedExtensions { get; }
 
         public void RunScript(ITracer tracer, string scriptFileName, string workingDirectory, Action<string> onWriteOutput, Action<string> onWriteError, TimeSpan timeout)

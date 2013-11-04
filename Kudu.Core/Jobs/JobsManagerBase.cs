@@ -26,9 +26,13 @@ namespace Kudu.Core.Jobs
         private const string DefaultScriptFileName = "run";
 
         protected IEnvironment Environment { get; private set; }
+
         protected IFileSystem FileSystem { get; private set; }
+
         protected IDeploymentSettingsManager Settings { get; private set; }
+
         protected ITraceFactory TraceFactory { get; private set; }
+
         protected string JobsBinariesPath { get; private set; }
 
         protected JobsManagerBase(ITraceFactory traceFactory, IEnvironment environment, IFileSystem fileSystem, IDeploymentSettingsManager settings, string jobsTypePath)
@@ -42,6 +46,7 @@ namespace Kudu.Core.Jobs
         }
 
         public abstract IEnumerable<TJob> ListJobs();
+
         public abstract TJob GetJob(string jobName);
 
         protected TJob GetJobInternal(string jobName)
@@ -107,6 +112,10 @@ namespace Kudu.Core.Jobs
 
         private string FindCommandToRun(FileInfoBase[] files, out IScriptHost scriptHostFound)
         {
+            string secondaryScriptFound = null;
+
+            scriptHostFound = null;
+
             foreach (ScriptHostBase scriptHost in ScriptHosts)
             {
                 foreach (string supportedExtension in scriptHost.SupportedExtensions)
@@ -116,14 +125,26 @@ namespace Kudu.Core.Jobs
                     {
                         var scriptFound =
                             supportedFiles.FirstOrDefault(f => String.Equals(f.Name, DefaultScriptFileName, StringComparison.OrdinalIgnoreCase));
-                        var supportedFile = scriptFound ?? supportedFiles.First();
-                        scriptHostFound = scriptHost;
-                        return supportedFile.FullName;
+
+                        if (scriptFound != null)
+                        {
+                            scriptHostFound = scriptHost;
+                            return scriptFound.FullName;
+                        }
+
+                        if (secondaryScriptFound == null)
+                        {
+                            scriptHostFound = scriptHost;
+                            secondaryScriptFound = supportedFiles.First().FullName;
+                        }
                     }
                 }
             }
 
-            scriptHostFound = null;
+            if (secondaryScriptFound != null)
+            {
+                return secondaryScriptFound;
+            }
 
             return null;
         }

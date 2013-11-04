@@ -44,7 +44,6 @@
     <Compile Include="Deployment\CascadeLogger.cs" />
     <Compile Include="Deployment\DeploymentStatusFileExtensions.cs" />
     <Compile Include="Deployment\DeploymentStatusManager.cs" />
-    <Compile Include="Deployment\Generator\BaseConsoleBuilder.cs" />
     <Compile Include="Deployment\Generator\BasicConsoleBuilder.cs" />
     <Compile Include="Deployment\Generator\DotNetConsoleBuilder.cs" />
     <Compile Include="Deployment\Generator\CustomGeneratorCommandSiteBuilder.cs" />
